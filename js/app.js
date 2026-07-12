@@ -344,6 +344,12 @@ function buildJobCard(j) {
   <div class="card-footer">
     <span class="source-tag">${escapeHtml(j.source || "")}</span>
     <span>${escapeHtml(timeAgo(j.date_posted))}</span>
+    ${j.apply_url ? `
+    <a href="${escapeHtml(j.apply_url)}" target="_blank" rel="noopener"
+       onclick="event.stopPropagation()"
+       style="margin-left:auto;background:var(--accent);color:#fff;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">
+      Apply →
+    </a>` : ""}
   </div>
 </div>`;
 }
@@ -434,12 +440,48 @@ function renderDetail(job) {
         <div class="detail-desc">${escapeHtml(job.description)}</div>
       </div>` : ""}
 
-      <!-- Decision Makers -->
+      <!-- Decision Makers & Contact -->
       <div>
-        <div class="detail-section-title">Hiring Contacts at ${escapeHtml(job.company)}</div>
-        <p style="font-size:12px;color:var(--text-3);margin-bottom:8px">
-          These are suggested roles to search on LinkedIn. Click a link to find the right person.
-        </p>
+        <div class="detail-section-title">Reach Out to ${escapeHtml(job.company)}</div>
+
+        <!-- Direct company links -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          ${job.apply_url ? `
+          <a href="${escapeHtml(job.apply_url)}" target="_blank" rel="noopener" class="contact-link" style="background:var(--accent);color:#fff;border-color:var(--accent);font-size:12px;padding:6px 12px">
+            🚀 Apply Directly
+          </a>` : ""}
+          ${job.company_linkedin ? `
+          <a href="${escapeHtml(job.company_linkedin)}" target="_blank" rel="noopener" class="contact-link">
+            💼 Company LinkedIn
+          </a>` : ""}
+          ${job.company_twitter ? `
+          <a href="${escapeHtml(job.company_twitter)}" target="_blank" rel="noopener" class="contact-link">
+            🐦 Twitter / X
+          </a>` : ""}
+          ${job.company_website ? `
+          <a href="${escapeHtml(job.company_website)}" target="_blank" rel="noopener" class="contact-link">
+            🌐 Website
+          </a>` : ""}
+        </div>
+
+        <!-- Email contacts -->
+        ${job.careers_email || job.jobs_email ? `
+        <div style="margin-bottom:12px">
+          <div class="detail-meta-label" style="margin-bottom:6px">📧 Common Hiring Emails</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${job.careers_email ? `
+            <a href="mailto:${escapeHtml(job.careers_email)}" class="contact-link">
+              ✉ ${escapeHtml(job.careers_email)}
+            </a>` : ""}
+            ${job.jobs_email ? `
+            <a href="mailto:${escapeHtml(job.jobs_email)}" class="contact-link">
+              ✉ ${escapeHtml(job.jobs_email)}
+            </a>` : ""}
+          </div>
+        </div>` : ""}
+
+        <!-- Hiring roles to find on LinkedIn -->
+        <div class="detail-meta-label" style="margin-bottom:6px">🔍 Find These People on LinkedIn</div>
         <div class="detail-contacts-list">
           ${contacts.map(c => `
           <div class="contact-card">
@@ -449,7 +491,7 @@ function renderDetail(job) {
               <div class="contact-title">${escapeHtml(c.company)}</div>
             </div>
             <div class="contact-links">
-              <a class="contact-link" href="${c.linkedin}" target="_blank" rel="noopener">🔗 Find on LinkedIn</a>
+              <a class="contact-link" href="${escapeHtml(c.linkedin)}" target="_blank" rel="noopener">🔗 Search LinkedIn</a>
             </div>
           </div>`).join("")}
         </div>

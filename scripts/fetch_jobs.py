@@ -22,6 +22,27 @@ MOTION_KEYWORDS = [
     "2d animator", "3d motion", "visual effects designer"
 ]
 
+MOTION_TITLE_KEYWORDS = [
+    "motion", "mograph", "animation", "animator", "motion graphic",
+    "motion design", "2d anim", "3d anim", "vfx designer", "visual effects"
+]
+
+
+def is_motion_design_job(title: str) -> bool:
+    t = title.lower()
+    return any(k in t for k in MOTION_TITLE_KEYWORDS)
+
+
+def extract_domain(url: str) -> str:
+    if not url:
+        return ""
+    m = re.search(r"https?://(?:www\.)?([^/]+)", url)
+    return m.group(1) if m else ""
+
+
+def company_slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "-", name.lower()).strip("-")
+
 SKILL_KEYWORDS = [
     "after effects", "cinema 4d", "c4d", "blender", "premiere pro",
     "illustrator", "photoshop", "davinci resolve", "nuke", "houdini",
@@ -162,15 +183,18 @@ def fetch_adzuna(country_code: str, country_name: str) -> list[dict]:
 
 
 def _norm_adzuna(j: dict, country_name: str) -> dict:
-    area  = j.get("location", {}).get("area", [])
-    city  = area[-1] if area else ""
-    title = j.get("title", "Motion Designer")
-    desc  = clean_html(j.get("description", ""))
-    url   = j.get("redirect_url", "")
+    area    = j.get("location", {}).get("area", [])
+    city    = area[-1] if area else ""
+    title   = j.get("title", "Motion Designer")
+    desc    = clean_html(j.get("description", ""))
+    url     = j.get("redirect_url", "")
+    company = j.get("company", {}).get("display_name", "Unknown")
+    domain  = extract_domain(url)
+    slug    = company_slug(company)
     return {
         "id":               make_id(url),
         "title":            title,
-        "company":          j.get("company", {}).get("display_name", "Unknown"),
+        "company":          company,
         "location":         city,
         "country":          country_name,
         "employment_type":  detect_employment_type(title, desc),
@@ -185,6 +209,12 @@ def _norm_adzuna(j: dict, country_name: str) -> dict:
         "visa_sponsorship": check_visa(desc),
         "skills":           extract_skills(desc),
         "experience":       "",
+        "company_domain":   domain,
+        "company_linkedin": f"https://www.linkedin.com/company/{slug}",
+        "company_twitter":  f"https://twitter.com/search?q={requests.utils.quote(company)}+hiring",
+        "company_website":  f"https://{domain}" if domain else "",
+        "careers_email":    f"careers@{domain}" if domain else "",
+        "jobs_email":       f"jobs@{domain}" if domain else "",
     }
 
 
@@ -255,10 +285,14 @@ def _norm_jsearch(j: dict) -> dict:
                    "NL": "Netherlands", "SG": "Singapore", "IN": "India"}
     country_name = country_map.get(country.upper(), country or "United States")
 
+    company = j.get("employer_name", "Unknown")
+    domain  = extract_domain(url) or extract_domain(j.get("employer_website", ""))
+    slug    = company_slug(company)
+
     return {
-        "id":               make_id(url or title + j.get("employer_name", "")),
+        "id":               make_id(url or title + company),
         "title":            title,
-        "company":          j.get("employer_name", "Unknown"),
+        "company":          company,
         "location":         j.get("job_city", "") or j.get("job_state", ""),
         "country":          country_name,
         "employment_type":  employment_type,
@@ -273,6 +307,12 @@ def _norm_jsearch(j: dict) -> dict:
         "visa_sponsorship": check_visa(desc),
         "skills":           extract_skills(desc),
         "experience":       j.get("job_required_experience", {}).get("required_experience_in_months", ""),
+        "company_domain":   domain,
+        "company_linkedin": f"https://www.linkedin.com/company/{slug}",
+        "company_twitter":  f"https://twitter.com/search?q={requests.utils.quote(company)}+hiring",
+        "company_website":  f"https://{domain}" if domain else "",
+        "careers_email":    f"careers@{domain}" if domain else "",
+        "jobs_email":       f"jobs@{domain}" if domain else "",
     }
 
 
@@ -371,6 +411,12 @@ def _norm_muse(j: dict) -> dict:
         "visa_sponsorship": check_visa(desc),
         "skills":           extract_skills(desc),
         "experience":       "",
+        "company_domain":   extract_domain(url),
+        "company_linkedin": f"https://www.linkedin.com/company/{company_slug(company)}",
+        "company_twitter":  f"https://twitter.com/search?q={requests.utils.quote(company)}+hiring",
+        "company_website":  f"https://{extract_domain(url)}" if extract_domain(url) else "",
+        "careers_email":    f"careers@{extract_domain(url)}" if extract_domain(url) else "",
+        "jobs_email":       f"jobs@{extract_domain(url)}" if extract_domain(url) else "",
     }
 
 
@@ -442,6 +488,10 @@ def main():
     all_jobs += fetch_themuse()
 
     print(f"\nRaw total: {len(all_jobs)} jobs")
+
+    # ── Motion design only filter ──
+    all_jobs = [j for j in all_jobs if is_motion_design_job(j.get("title", ""))]
+    print(f"After motion-design filter: {len(all_jobs)} jobs")
 
     all_jobs = deduplicate(all_jobs)
     print(f"After dedup: {len(all_jobs)} jobs")
