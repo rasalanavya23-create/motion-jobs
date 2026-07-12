@@ -130,10 +130,11 @@ def clean_html(text: str) -> str:
 
 def fetch_adzuna(country_code: str, country_name: str) -> list[dict]:
     if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
+        print(f"  Adzuna: missing API keys (ADZUNA_APP_ID={bool(ADZUNA_APP_ID)}, ADZUNA_APP_KEY={bool(ADZUNA_APP_KEY)})")
         return []
     jobs = []
     for query in ["motion designer", "motion graphics designer"]:
-        for page in range(1, 4):          # up to 3 pages × 50 = 150 per query
+        for page in range(1, 4):
             url = f"https://api.adzuna.com/v1/api/jobs/{country_code}/search/{page}"
             params = {
                 "app_id": ADZUNA_APP_ID,
@@ -146,6 +147,7 @@ def fetch_adzuna(country_code: str, country_name: str) -> list[dict]:
             try:
                 r = requests.get(url, params=params, timeout=15)
                 if r.status_code != 200:
+                    print(f"  Adzuna {country_code} HTTP {r.status_code}: {r.text[:300]}")
                     break
                 data = r.json()
                 results = data.get("results", [])
@@ -190,6 +192,7 @@ def _norm_adzuna(j: dict, country_name: str) -> dict:
 
 def fetch_jsearch(query: str, location: str = "", num_pages: int = 5) -> list[dict]:
     if not RAPIDAPI_KEY:
+        print("  JSearch: missing RAPIDAPI_KEY")
         return []
     jobs = []
     full_query = f"{query} in {location}" if location else query
@@ -208,8 +211,11 @@ def fetch_jsearch(query: str, location: str = "", num_pages: int = 5) -> list[di
         try:
             r = requests.get(url, headers=headers, params=params, timeout=15)
             if r.status_code != 200:
+                print(f"  JSearch HTTP {r.status_code}: {r.text[:300]}")
                 break
             results = r.json().get("data", [])
+            if results:
+                print(f"  JSearch '{full_query}' page {page}: {len(results)} jobs")
             if not results:
                 break
             for j in results:
